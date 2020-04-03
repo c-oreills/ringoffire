@@ -1,5 +1,5 @@
 var cardBack = new Image();
-cardBack.src = 'images/2B.svg';
+cardBack.src = 'static/images/2B.svg';
 
 // Orig image size 225x315: 2/3 scale
 // const cardWidth = 150;
