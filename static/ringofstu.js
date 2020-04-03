@@ -1,3 +1,15 @@
+var socket = io();
+socket.on('connect', function() {
+  socket.emit('register', window.location.search);
+});
+
+
+const cursors = {};
+socket.on('cursorupdate', function(e) {
+  cursors[e.name] = e;
+});
+
+
 var cardBack = new Image();
 cardBack.src = 'static/images/2B.svg';
 
@@ -18,9 +30,11 @@ const m = {
   y: innerHeight / 2
 };
 
+
 window.onmousemove = function(e) {
   m.x = e.offsetX;
   m.y = e.offsetY;
+  socket.emit('mousemove', m);
 };
 
 function drawImg(ctx, img, x, y, width, height, rot) {
@@ -76,8 +90,16 @@ function draw() {
   cards.forEach(card =>
     drawImg(ctx, cardBack, card.x, card.y, cardWidth, cardHeight, card.rot));
 
+  ctx.beginPath();
   ctx.arc(canvas.width / 2, canvas.height / 2, 80, 0, 2 * Math.PI);
   ctx.stroke();
+
+  Object.entries(cursors).forEach(([name, cursor]) => {
+    ctx.beginPath();
+    ctx.fillStyle = 'green';
+    ctx.arc(cursor.x, cursor.y, 10, 0, 2 * Math.PI);
+    ctx.fill();
+  });
 
   drawImg(ctx, cardBack, m.x, m.y, cardWidth, cardHeight, cardRot);
 
