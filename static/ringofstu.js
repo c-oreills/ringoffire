@@ -12,6 +12,17 @@ function throttled(delay, fn) {
   };
 };
 
+function shuffle(a) {
+  var j, x, i;
+  for (i = a.length - 1; i > 0; i--) {
+    j = Math.floor(Math.random() * (i + 1));
+    x = a[i];
+    a[i] = a[j];
+    a[j] = x;
+  }
+  return a;
+}
+
 function degToRad(degrees) {
   return degrees * Math.PI / 180;
 }
@@ -149,6 +160,7 @@ function initCards() {
           y: 0,
           rot: 0,
         })));
+  shuffle(cards);
   // cards.length = 1;
 };
 
