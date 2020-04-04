@@ -48,12 +48,19 @@ def handle_register(message):
     print(f'register from {name} (sid: {request.sid})')
 
 
-@socketio.on('mousemove')
-def handle_mousemove(message):
+@socketio.on('client_cursor_update')
+def handle_client_cursor_update(mouse):
     name = get_name_from_sid(request.sid)
-    message.update(name=name)
+    mouse.update(name=name)
     for sid in all_other_sids(request.sid):
-        socketio.emit('cursorupdate', message, room=sid)
+        socketio.emit('server_cursor_update', mouse, room=sid)
+
+
+@socketio.on('client_cards_update')
+def handle_client_cards_update(cards):
+    name = get_name_from_sid(request.sid)
+    for sid in all_other_sids(request.sid):
+        socketio.emit('server_cards_update', cards, room=sid)
 
 
 if __name__ == '__main__':

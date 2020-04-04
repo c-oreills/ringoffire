@@ -1,9 +1,25 @@
+// Utilities ---------------------------------------------------------------- //
+
+function throttled(delay, fn) {
+  let lastCall = 0;
+  return function (...args) {
+    const now = (new Date).getTime();
+    if (now - lastCall < delay) {
+      return null;
+    }
+    lastCall = now;
+    return fn(...args);
+  };
+};
+
+
 // Base data setup ---------------------------------------------------------- //
 
 const suits = ['C', 'D', 'H', 'S'];
 const faces = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
-const cards = [];
+var cards = [];
 const cursors = {};
+
 
 // Socket handling ---------------------------------------------------------- //
 
@@ -16,9 +32,15 @@ socket.on('deregister', function(name) {
   delete cursors[name];
 });
 
-socket.on('cursorupdate', function(e) {
+socket.on('server_cursor_update', function(e) {
   cursors[e.name] = e;
 });
+
+socket.on('server_cards_update', function(updated_cards) {
+  console.log('scu');
+  cards = updated_cards;
+});
+
 
 // Mouse handling ----------------------------------------------------------- //
 
@@ -28,17 +50,20 @@ const m = {
 };
 
 
+function emitMouseMove(m) {
+  socket.emit('client_cursor_update', m);
+}
+
+const throttledEmitMouseMove = throttled(50, emitMouseMove);
+
 window.onmousemove = function(e) {
   m.x = e.offsetX;
   m.y = e.offsetY;
-  socket.emit('mousemove', m);
+  throttledEmitMouseMove(m);
 };
 
 
-// Draw logic --------------------------------------------------------------- //
-
-var cardBack = new Image();
-cardBack.src = 'static/images/2B.svg';
+// Card handling ------------------------------------------------------------ //
 
 // Orig image size 225x315: 2/3 scale
 const cardWidth = 150;
@@ -54,36 +79,25 @@ const scatterRadius = 220;
 
 var cardRot = 25;
 
-function drawImg(ctx, img, x, y, width, height, rot) {
-  ctx.save();
-  ctx.translate(x, y);
-  ctx.rotate((Math.PI / 180) * rot);
-  ctx.drawImage(img, 0, 0, width, height);
-  ctx.restore();
+function initCards() {
+  suits.forEach(
+    suit => faces.forEach(
+      face =>
+        cards.push({
+          suit,
+          face,
+          x: 0,
+          y: 0,
+          rot: 0,
+        })));
+  cards.length = 1;
 };
-
 
 function rotateAroundCenter(card, rot) {
   // WIP
   card.x = card.x + cardWidth * Math.cos((Math.PI / 180) * rot);
   card.y = card.y - cardWidth * Math.sin((Math.PI / 180) * rot);
 }
-
-
-function initCards() {
-  suits.forEach(
-    suit => faces.forEach(
-      face =>
-      cards.push({
-        suit,
-        face,
-        x: 0,
-        y: 0,
-        rot: 0,
-      })));
-};
-
-const canvas = document.getElementById('canvas');
 
 function scatterCards() {
   cards.forEach(
@@ -94,6 +108,25 @@ function scatterCards() {
       // card.rot = Math.random() * 360;
     });
 }
+
+function emitCardsUpdate() {
+  socket.emit('client_cards_update', cards);
+}
+
+// Draw logic --------------------------------------------------------------- //
+
+var cardBack = new Image();
+cardBack.src = 'static/images/2B.svg';
+
+function drawImg(ctx, img, x, y, width, height, rot) {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate((Math.PI / 180) * rot);
+  ctx.drawImage(img, 0, 0, width, height);
+  ctx.restore();
+};
+
+const canvas = document.getElementById('canvas');
 
 initCards();
 scatterCards();
