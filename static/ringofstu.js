@@ -246,9 +246,11 @@ function emitCardsUpdate() {
 
 // Draw logic --------------------------------------------------------------- //
 
-var cardBack = new Image();
+const background = new Image();
+background.src = 'static/images/background.png';
+const cardBack = new Image();
 cardBack.src = 'static/images/2B.svg';
-var cardImages = {};
+const cardImages = {};
 
 function initCardImages() {
   suits.forEach(
@@ -279,7 +281,7 @@ scatterCards();
 
 function draw() {
   const ctx = canvas.getContext('2d');
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.drawImage(background, 0, 0, canvas.width, canvas.height);
 
   cards.forEach(function(card) {
     let img;
@@ -294,13 +296,13 @@ function draw() {
     }
   });
 
-  ctx.beginPath();
-  ctx.arc(tableCenterX, tableCenterY, innerCircleRadius, 0, 2 * Math.PI);
-  ctx.stroke();
+  // ctx.beginPath();
+  // ctx.arc(tableCenterX, tableCenterY, innerCircleRadius, 0, 2 * Math.PI);
+  // ctx.stroke();
 
-  ctx.beginPath();
-  ctx.arc(tableCenterX, tableCenterY, outerCircleRadius, 0, 2 * Math.PI);
-  ctx.stroke();
+  // ctx.beginPath();
+  // ctx.arc(tableCenterX, tableCenterY, outerCircleRadius, 0, 2 * Math.PI);
+  // ctx.stroke();
 
   Object.entries(cursors).forEach(([name, cursor]) => {
     ctx.beginPath();
