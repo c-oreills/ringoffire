@@ -197,6 +197,11 @@ function scatterCards() {
     });
 }
 
+function startUp() {
+  initCards();
+  scatterCards();
+}
+
 function rotateCardAroundCenter(card, rotBy) {
   let [x, y, rot] = rotateRectAroundCenter(card.x, card.y, cardWidth, cardHeight, card.rot, rotBy);
   card.x = x;
@@ -276,8 +281,6 @@ function drawImg(ctx, img, x, y, width, height, rot) {
 const canvas = document.getElementById('canvas');
 
 initCardImages();
-initCards();
-scatterCards();
 
 function draw() {
   const ctx = canvas.getContext('2d');
