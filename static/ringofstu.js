@@ -309,7 +309,7 @@ function draw() {
 
   Object.entries(cursors).forEach(([name, cursor]) => {
     ctx.beginPath();
-    ctx.fillStyle = 'green';
+    ctx.fillStyle = 'blue';
     ctx.arc(cursor.x, cursor.y, 10, 0, 2 * Math.PI);
     ctx.fill();
   });
