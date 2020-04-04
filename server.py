@@ -9,6 +9,7 @@ app.config['DEBUG'] = True
 socketio = SocketIO(app)
 
 names_to_sid = {}
+last_seen_cards = None
 
 
 def get_name_from_sid(sid):
@@ -46,6 +47,8 @@ def handle_register(message):
         name = request.sid
     names_to_sid[name] = request.sid
     print(f'register from {name} (sid: {request.sid})')
+    if last_seen_cards:
+        socketio.emit('server_cards_update', last_seen_cards, room=request.sid)
 
 
 @socketio.on('client_cursor_update')
@@ -58,6 +61,12 @@ def handle_client_cursor_update(mouse):
 
 @socketio.on('client_card_update')
 def handle_client_card_update(card):
+    if last_seen_cards:
+        for card_ in last_seen_cards:
+            if (
+                    card['suit'] == card_['suit'] and
+                    card['face'] == card_['face']):
+                card_.update(card)
     name = get_name_from_sid(request.sid)
     for sid in all_other_sids(request.sid):
         socketio.emit('server_card_update', card, room=sid)
@@ -65,6 +74,8 @@ def handle_client_card_update(card):
 
 @socketio.on('client_cards_update')
 def handle_client_cards_update(cards):
+    global last_seen_cards
+    last_seen_cards = cards
     name = get_name_from_sid(request.sid)
     for sid in all_other_sids(request.sid):
         socketio.emit('server_cards_update', cards, room=sid)
