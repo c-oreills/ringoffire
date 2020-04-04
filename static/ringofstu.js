@@ -41,13 +41,16 @@ var cardBack = new Image();
 cardBack.src = 'static/images/2B.svg';
 
 // Orig image size 225x315: 2/3 scale
-// const cardWidth = 150;
-// const cardHeight = 210;
-const cardWidth = 75;
-const cardHeight = 105;
+const cardWidth = 150;
+const cardHeight = 210;
+
 // Card diagonal "radius" for use in rotation around center point
 const cardDiag = Math.sqrt(cardWidth * cardWidth + cardHeight * cardHeight);
 const cardDiagAngle = Math.atan(cardWidth / cardHeight);
+
+const innerCircleRadius = 100;
+const outerCircleRadius = 350;
+const scatterRadius = 220;
 
 var cardRot = 25;
 
@@ -86,8 +89,8 @@ function scatterCards() {
   cards.forEach(
     card => {
       let theta = Math.random();
-      card.x = Math.cos(theta * Math.PI * 2) * 150 + ((canvas.width - cardWidth) / 2);
-      card.y = Math.sin(theta * Math.PI * 2) * 150 + ((canvas.height - cardHeight) / 2);
+      card.x = Math.cos(theta * Math.PI * 2) * scatterRadius + ((canvas.width - cardWidth) / 2);
+      card.y = Math.sin(theta * Math.PI * 2) * scatterRadius + ((canvas.height - cardHeight) / 2);
       // card.rot = Math.random() * 360;
     });
 }
@@ -103,7 +106,11 @@ function draw() {
     drawImg(ctx, cardBack, card.x, card.y, cardWidth, cardHeight, card.rot));
 
   ctx.beginPath();
-  ctx.arc(canvas.width / 2, canvas.height / 2, 80, 0, 2 * Math.PI);
+  ctx.arc(canvas.width / 2, canvas.height / 2, innerCircleRadius, 0, 2 * Math.PI);
+  ctx.stroke();
+
+  ctx.beginPath();
+  ctx.arc(canvas.width / 2, canvas.height / 2, outerCircleRadius, 0, 2 * Math.PI);
   ctx.stroke();
 
   Object.entries(cursors).forEach(([name, cursor]) => {
