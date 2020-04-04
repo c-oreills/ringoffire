@@ -1,14 +1,41 @@
+// Base data setup ---------------------------------------------------------- //
+
+const suits = ['C', 'D', 'H', 'S'];
+const faces = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
+const cards = [];
+const cursors = {};
+
+// Socket handling ---------------------------------------------------------- //
+
 var socket = io();
 socket.on('connect', function() {
   socket.emit('register', window.location.search);
 });
 
+socket.on('deregister', function(name) {
+  delete cursors[name];
+});
 
-const cursors = {};
 socket.on('cursorupdate', function(e) {
   cursors[e.name] = e;
 });
 
+// Mouse handling ----------------------------------------------------------- //
+
+const m = {
+  x: innerWidth / 2,
+  y: innerHeight / 2
+};
+
+
+window.onmousemove = function(e) {
+  m.x = e.offsetX;
+  m.y = e.offsetY;
+  socket.emit('mousemove', m);
+};
+
+
+// Draw logic --------------------------------------------------------------- //
 
 var cardBack = new Image();
 cardBack.src = 'static/images/2B.svg';
@@ -23,19 +50,6 @@ const cardDiag = Math.sqrt(cardWidth * cardWidth + cardHeight * cardHeight);
 const cardDiagAngle = Math.atan(cardWidth / cardHeight);
 
 var cardRot = 25;
-var cards = [];
-
-const m = {
-  x: innerWidth / 2,
-  y: innerHeight / 2
-};
-
-
-window.onmousemove = function(e) {
-  m.x = e.offsetX;
-  m.y = e.offsetY;
-  socket.emit('mousemove', m);
-};
 
 function drawImg(ctx, img, x, y, width, height, rot) {
   ctx.save();
@@ -52,8 +66,6 @@ function rotateAroundCenter(card, rot) {
   card.y = card.y - cardWidth * Math.sin((Math.PI / 180) * rot);
 }
 
-const suits = ['C', 'D', 'H', 'S'];
-const faces = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
 
 function initCards() {
   suits.forEach(

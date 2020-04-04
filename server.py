@@ -28,6 +28,13 @@ def index():
     return open('index.html').read()
 
 
+@socketio.on('disconnect')
+def handle_disconnect():
+    name = get_name_from_sid(request.sid)
+    socketio.emit('deregister', name, broadcast=True)
+    print(f'deregister from {name} (sid: {request.sid})')
+
+
 @socketio.on('register')
 def handle_register(message):
     if message and message.startswith('?'):
