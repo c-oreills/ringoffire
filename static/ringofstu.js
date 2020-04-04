@@ -100,7 +100,7 @@ window.onmousedown = function(e) {
 };
 
 window.onmouseup = function(e) {
-  if (isCardOutsideCircle(cardBeingDragged)) {
+  if (cardBeingDragged != null && isCardOutsideCircle(cardBeingDragged)) {
     cardBeingDragged.state = cardState.faceUp;
     emitCardUpdate(cardBeingDragged);
   };
