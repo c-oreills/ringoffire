@@ -27,7 +27,7 @@ const suits = ['C', 'D', 'H', 'S'];
 const faces = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
 var cards = [];
 const cursors = {};
-var isDragging = false;
+var cardBeingDragged = null;
 
 
 // Socket handling ---------------------------------------------------------- //
@@ -58,31 +58,29 @@ const m = {
 };
 
 
-function emitMouseMove(m) {
+function emitMouseMoveAndDraggedCard(m, e) {
   socket.emit('client_cursor_update', m);
+  if (cardBeingDragged !== null) {
+    cardBeingDragged.x += e.movementX;
+    cardBeingDragged.y += e.movementY;
+    emitCardsUpdate();
+  }
 }
 
-const throttledEmitMouseMove = throttled(50, emitMouseMove);
+const throttledEmitMouseMoveAndDraggedCard = throttled(50, emitMouseMoveAndDraggedCard);
 
 window.onmousemove = function(e) {
   m.x = e.offsetX;
   m.y = e.offsetY;
-  throttledEmitMouseMove(m);
-  if (isDragging) {
-    let card = cards[0];
-    card.x += e.movementX;
-    card.y += e.movementY;
-    emitCardsUpdate();
-  }
+  throttledEmitMouseMoveAndDraggedCard(m, e);
 };
 
 window.onmousedown = function(e) {
-  isDragging = true;
+  cardBeingDragged = getTopCardAtPoint(m.x, m.y);
 };
 
 window.onmouseup = function(e) {
-  isDragging = false;
-  let card = cards[0];
+  cardBeingDragged = null;
 };
 
 
@@ -151,9 +149,7 @@ function initCards() {
           y: 0,
           rot: 0,
         })));
-  cards.length = 1;
-  cards[0].x = 100;
-  cards[0].y = 100;
+  // cards.length = 1;
 };
 
 
@@ -163,7 +159,7 @@ function scatterCards() {
       let theta = Math.random();
       card.x = Math.cos(theta * Math.PI * 2) * scatterRadius + ((canvas.width - cardWidth) / 2);
       card.y = Math.sin(theta * Math.PI * 2) * scatterRadius + ((canvas.height - cardHeight) / 2);
-      // card.rot = Math.random() * 360;
+      rotateCardAroundCenter(card, Math.random() * 360);
     });
 }
 
@@ -172,6 +168,16 @@ function rotateCardAroundCenter(card, rotBy) {
   card.x = x;
   card.y = y;
   card.rot = rot;
+}
+
+function getTopCardAtPoint(x, y) {
+  for (let i = cards.length - 1; i > 0; i--) {
+    let card = cards[i];
+    if (pointIsInRect(card.x, card.y, cardWidth, cardHeight, card.rot, x, y)) {
+      return card;
+    }
+  }
+  return null;
 }
 
 function emitCardsUpdate() {
@@ -194,7 +200,7 @@ function drawImg(ctx, img, x, y, width, height, rot) {
 const canvas = document.getElementById('canvas');
 
 initCards();
-// scatterCards();
+scatterCards();
 
 function draw() {
   const ctx = canvas.getContext('2d');
