@@ -57,12 +57,20 @@ socket.on('server_cursor_update', function(e) {
   cursors[e.name] = e;
 });
 
+socket.on('server_card_update', function(updated_card) {
+  cards.forEach(function (card) {
+    if (card.suit == updated_card.suit && card.face == updated_card.face) {
+      Object.assign(card, updated_card);
+    }
+  });
+});
+
 socket.on('server_cards_update', function(updated_cards) {
   cards = updated_cards;
 });
 
 
-// Mouse handling ----------------------------------------------------------- //
+// Mouse/keyboard handling -------------------------------------------------- //
 
 const m = {
   x: innerWidth / 2,
@@ -75,7 +83,7 @@ function emitMouseMoveAndDraggedCard(m, e) {
   if (cardBeingDragged !== null) {
     cardBeingDragged.x += e.movementX;
     cardBeingDragged.y += e.movementY;
-    emitCardsUpdate();
+    emitCardUpdate(cardBeingDragged);
   }
 }
 
@@ -94,9 +102,15 @@ window.onmousedown = function(e) {
 window.onmouseup = function(e) {
   if (isCardOutsideCircle(cardBeingDragged)) {
     cardBeingDragged.state = cardState.faceUp;
-    emitCardsUpdate();
+    emitCardUpdate(cardBeingDragged);
   };
   cardBeingDragged = null;
+};
+
+window.onkeydown = function(e) {
+  if (e.key == ' ') {
+    clearFaceUpCards();
+  }
 };
 
 
@@ -193,6 +207,9 @@ function rotateCardAroundCenter(card, rotBy) {
 function getTopCardAtPoint(x, y) {
   for (let i = cards.length - 1; i > 0; i--) {
     let card = cards[i];
+    if (card.state == cardState.offTable) {
+      continue;
+    }
     if (pointIsInRect(card.x, card.y, cardWidth, cardHeight, card.rot, x, y)) {
       return card;
     }
@@ -208,6 +225,19 @@ function isCardOutsideCircle(card) {
   } else {
     return false;
   }
+}
+
+function clearFaceUpCards() {
+  cards.forEach(function(card) {
+    if (card.state == cardState.faceUp) {
+      card.state = cardState.offTable;
+    }
+  });
+  emitCardsUpdate();
+}
+
+function emitCardUpdate(card) {
+  socket.emit('client_card_update', card);
 }
 
 function emitCardsUpdate() {

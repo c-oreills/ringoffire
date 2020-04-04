@@ -56,6 +56,13 @@ def handle_client_cursor_update(mouse):
         socketio.emit('server_cursor_update', mouse, room=sid)
 
 
+@socketio.on('client_card_update')
+def handle_client_card_update(card):
+    name = get_name_from_sid(request.sid)
+    for sid in all_other_sids(request.sid):
+        socketio.emit('server_card_update', card, room=sid)
+
+
 @socketio.on('client_cards_update')
 def handle_client_cards_update(cards):
     name = get_name_from_sid(request.sid)
