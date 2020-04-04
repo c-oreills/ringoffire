@@ -35,7 +35,8 @@ function hypFromSides(side1, side2) {
 // Base data setup ---------------------------------------------------------- //
 
 const suits = ['C', 'D', 'H', 'S'];
-const faces = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
+const faces = ['A', '2', '3', '4', '5', '6', '7', '8', '9', 'T', 'J', 'Q', 'K'];
+const cardState = {faceDown: 'faceDown', faceUp: 'faceUp', offTable: 'offTable'};
 var cards = [];
 const cursors = {};
 var cardBeingDragged = null;
@@ -91,6 +92,10 @@ window.onmousedown = function(e) {
 };
 
 window.onmouseup = function(e) {
+  if (isCardOutsideCircle(cardBeingDragged)) {
+    cardBeingDragged.state = cardState.faceUp;
+    emitCardsUpdate();
+  };
   cardBeingDragged = null;
 };
 
@@ -143,6 +148,8 @@ const cardHeight = 210;
 const cardDiag = hypFromSides(cardWidth, cardHeight);
 const cardDiagAngle = Math.atan(cardWidth / cardHeight);
 
+const tableCenterX = 1024 / 2;
+const tableCenterY = 768 / 2;
 const innerCircleRadius = 100;
 const outerCircleRadius = 350;
 const scatterRadius = 220;
@@ -159,6 +166,7 @@ function initCards() {
           x: 0,
           y: 0,
           rot: 0,
+          state: cardState.faceDown
         })));
   shuffle(cards);
   // cards.length = 1;
@@ -169,8 +177,8 @@ function scatterCards() {
   cards.forEach(
     card => {
       let theta = Math.random();
-      card.x = Math.cos(theta * Math.PI * 2) * scatterRadius + ((canvas.width - cardWidth) / 2);
-      card.y = Math.sin(theta * Math.PI * 2) * scatterRadius + ((canvas.height - cardHeight) / 2);
+      card.x = Math.cos(theta * Math.PI * 2) * scatterRadius + (tableCenterX - (cardWidth / 2));
+      card.y = Math.sin(theta * Math.PI * 2) * scatterRadius + (tableCenterY - (cardHeight / 2));
       rotateCardAroundCenter(card, Math.random() * 360);
     });
 }
@@ -192,6 +200,16 @@ function getTopCardAtPoint(x, y) {
   return null;
 }
 
+function isCardOutsideCircle(card) {
+  let [midX, midY, _a, _h] = rectMidPointDiagAngleHyp(card.x, card.y, cardWidth, cardHeight, card.rot);
+  let hyp = hypFromSides(midX - tableCenterX, midY - tableCenterY);
+  if (hyp > outerCircleRadius + (cardWidth / 2)) {
+    return true;
+  } else {
+    return false;
+  }
+}
+
 function emitCardsUpdate() {
   socket.emit('client_cards_update', cards);
 }
@@ -200,6 +218,20 @@ function emitCardsUpdate() {
 
 var cardBack = new Image();
 cardBack.src = 'static/images/2B.svg';
+var cardImages = {};
+
+function initCardImages() {
+  suits.forEach(
+    suit => {
+      cardImages[suit] = {};
+      faces.forEach(
+        face => {
+          let img = new Image();
+          img.src = `static/images/${face}${suit}.svg`;
+          cardImages[suit][face] = img;
+        });
+    });
+}
 
 function drawImg(ctx, img, x, y, width, height, rot) {
   ctx.save();
@@ -211,6 +243,7 @@ function drawImg(ctx, img, x, y, width, height, rot) {
 
 const canvas = document.getElementById('canvas');
 
+initCardImages();
 initCards();
 scatterCards();
 
@@ -218,15 +251,25 @@ function draw() {
   const ctx = canvas.getContext('2d');
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  cards.forEach(card =>
-    drawImg(ctx, cardBack, card.x, card.y, cardWidth, cardHeight, card.rot));
+  cards.forEach(function(card) {
+    let img;
+    if (card.state == cardState.faceDown) {
+      img = cardBack;
+    } else if (card.state == cardState.faceUp) {
+      img = cardImages[card.suit][card.face];
+    }
+
+    if (card.state != cardState.offTable) {
+      drawImg(ctx, img, card.x, card.y, cardWidth, cardHeight, card.rot);
+    }
+  });
 
   ctx.beginPath();
-  ctx.arc(canvas.width / 2, canvas.height / 2, innerCircleRadius, 0, 2 * Math.PI);
+  ctx.arc(tableCenterX, tableCenterY, innerCircleRadius, 0, 2 * Math.PI);
   ctx.stroke();
 
   ctx.beginPath();
-  ctx.arc(canvas.width / 2, canvas.height / 2, outerCircleRadius, 0, 2 * Math.PI);
+  ctx.arc(tableCenterX, tableCenterY, outerCircleRadius, 0, 2 * Math.PI);
   ctx.stroke();
 
   Object.entries(cursors).forEach(([name, cursor]) => {
