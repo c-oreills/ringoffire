@@ -81,8 +81,6 @@ const m = {
 function emitMouseMoveAndDraggedCard(m, e) {
   socket.emit('client_cursor_update', m);
   if (cardBeingDragged !== null) {
-    cardBeingDragged.x += e.movementX;
-    cardBeingDragged.y += e.movementY;
     emitCardUpdate(cardBeingDragged);
   }
 }
@@ -92,6 +90,10 @@ const throttledEmitMouseMoveAndDraggedCard = throttled(50, emitMouseMoveAndDragg
 window.onmousemove = function(e) {
   m.x = e.offsetX;
   m.y = e.offsetY;
+  if (cardBeingDragged !== null) {
+    cardBeingDragged.x += e.movementX;
+    cardBeingDragged.y += e.movementY;
+  }
   throttledEmitMouseMoveAndDraggedCard(m, e);
 };
 
