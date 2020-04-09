@@ -208,7 +208,7 @@ function rotateCardAroundCenter(card, rotBy) {
 }
 
 function getTopCardAtPoint(x, y) {
-  for (let i = cards.length - 1; i > 0; i--) {
+  for (let i = cards.length - 1; i >= 0; i--) {
     let card = cards[i];
     if (card.state == cardState.offTable) {
       continue;
