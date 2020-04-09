@@ -97,8 +97,7 @@ window.onmousemove = function(e) {
   m.x = e.offsetX;
   m.y = e.offsetY;
   if (cardBeingDragged !== null) {
-    cardBeingDragged.x += e.movementX;
-    cardBeingDragged.y += e.movementY;
+    moveCard(cardBeingDragged, e.movementX, e.movementY);
   }
   throttledEmitMouseMoveAndDraggedCard(m, e);
 };
@@ -168,8 +167,10 @@ const cardDiagAngle = Math.atan(cardHeight / cardWidth);
 // Card diagonal "radius" for use in rotation around center point
 const cardRadius = hypFromSides(cardWidth / 2, cardHeight / 2);
 
-const tableCenterX = 1024 / 2;
-const tableCenterY = 768 / 2;
+const tableWidth = 1024;
+const tableHeight = 768;
+const tableCenterX = tableWidth / 2;
+const tableCenterY = tableHeight / 2;
 const innerCircleRadius = 100;
 const outerCircleRadius = 350;
 const scatterRadius = 220;
@@ -224,6 +225,17 @@ function getTopCardAtPoint(x, y) {
     }
   }
   return null;
+}
+
+function moveCard(card, dx, dy) {
+  card.x += dx;
+  card.y += dy;
+  let [midX, midY, ..._] = rectMidPointDiagAngleRad(card.x, card.y, cardWidth, cardHeight, card.rot);
+  // Limit to table boundaries
+  if (midX < 0) card.x -= midX;
+  if (midY < 0) card.y -= midY;
+  if (midX > tableWidth) card.x -= (midX - tableWidth);
+  if (midY > tableHeight) card.y -= (midY - tableHeight);
 }
 
 function isCardOutsideCircle(card) {
