@@ -243,7 +243,7 @@ function emitCardsUpdate() {
 // Draw logic --------------------------------------------------------------- //
 
 const background = new Image();
-background.src = 'static/images/background.png';
+background.src = 'static/images/background.jpg';
 const cardBack = new Image();
 cardBack.src = 'static/images/2B.svg';
 const cardImages = {};
