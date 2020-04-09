@@ -261,7 +261,8 @@ function turnCardFaceUp(card) {
 
 function handleUpdatedCard(updatedCard) {
   // TODO: It's gross to iterate through cards to check for equality like this.
-  // Could rely on Object insertion order.
+  // Could rely on Object insertion order. In reality though an acceptable
+  // performance hit given likely size of array, even as it grows sparse.
   for (let [index, card] of Object.entries(cards)) {
     if (typeof card == 'undefined') continue;
 
