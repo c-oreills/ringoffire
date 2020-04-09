@@ -299,14 +299,6 @@ function draw() {
     }
   });
 
-  // ctx.beginPath();
-  // ctx.arc(tableCenterX, tableCenterY, innerCircleRadius, 0, 2 * Math.PI);
-  // ctx.stroke();
-
-  // ctx.beginPath();
-  // ctx.arc(tableCenterX, tableCenterY, outerCircleRadius, 0, 2 * Math.PI);
-  // ctx.stroke();
-
   Object.entries(cursors).forEach(([name, cursor]) => {
     ctx.beginPath();
     ctx.fillStyle = 'blue';
