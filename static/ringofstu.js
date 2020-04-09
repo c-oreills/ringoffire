@@ -107,12 +107,6 @@ window.onmouseup = function(e) {
   cardBeingDragged = null;
 };
 
-window.onkeydown = function(e) {
-  if (e.key == ' ') {
-    clearFaceUpCards();
-  }
-};
-
 
 // Draw utility functions --------------------------------------------------- //
 
@@ -171,6 +165,7 @@ const scatterRadius = 220;
 var cardRot = 25;
 
 function initCards() {
+  cards.splice(0, cards.length);
   suits.forEach(
     suit => faces.forEach(
       face =>
@@ -193,6 +188,7 @@ function scatterCards() {
       let theta = Math.random();
       card.x = Math.cos(theta * Math.PI * 2) * scatterRadius + (tableCenterX - (cardWidth / 2));
       card.y = Math.sin(theta * Math.PI * 2) * scatterRadius + (tableCenterY - (cardHeight / 2));
+      card.rot = 0; // Reset rotation in prep for rotating around center
       rotateCardAroundCenter(card, Math.random() * 360);
     });
 }
@@ -238,7 +234,6 @@ function clearFaceUpCards() {
       card.state = cardState.offTable;
     }
   });
-  emitCardsUpdate();
 }
 
 function emitCardUpdate(card) {
