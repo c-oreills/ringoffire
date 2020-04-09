@@ -1,6 +1,6 @@
 from urllib.parse import parse_qs
 
-from flask import Flask, render_template, request
+from flask import Flask, Response, render_template, request
 from flask_socketio import SocketIO
 
 app = Flask(__name__)
@@ -26,7 +26,7 @@ def all_other_sids(sid):
 
 @app.route('/')
 def index():
-    return open('index.html').read()
+    return Response(open('index.html').read(), mimetype='text/html')
 
 
 @socketio.on('disconnect')
