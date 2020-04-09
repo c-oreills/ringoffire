@@ -122,21 +122,29 @@ window.onmouseup = function(e) {
 
 // Draw utility functions --------------------------------------------------- //
 
-function rectMidPointDiagAngleHyp(x, y, width, height, rot) {
-  // TODO: since we're most likely to call this on cards, we could optimise by
-  // memoizing hyp and diagAngle based on cardWidth and cardHeight
-  let hyp = hypFromSides(width / 2, height / 2);
-  let diagAngle = Math.atan(height / width);
-  let midX = x + Math.cos(degToRad(rot) + diagAngle) * hyp;
-  let midY = y +  Math.sin(degToRad(rot) + diagAngle) * hyp;
-  return [midX, midY, diagAngle, hyp];
+function rectMidPointDiagAngleRad(x, y, width, height, rot) {
+  /* Return rectangle's midpoint (x, y), diagonal angle from origin (not taking
+  into account rotation), and "radius", i.e. length from midpoint to corner */
+  let diagAngle, radius;
+  if (width == cardWidth && height == cardHeight) {
+    // Optimization: use precomputed values
+    diagAngle = cardDiagAngle;
+    radius = cardRadius;
+  } else {
+    diagAngle = Math.atan(height / width);
+    radius = hypFromSides(width / 2, height / 2);
+  }
+
+  let midX = x + Math.cos(degToRad(rot) + diagAngle) * radius;
+  let midY = y +  Math.sin(degToRad(rot) + diagAngle) * radius;
+  return [midX, midY, diagAngle, radius];
 }
 
 function pointIsInRect(rectX, rectY, rectWidth, rectHeight, rectRot, pointX, pointY) {
   /* Check if a point is in (rotated) rectangle by negatively rotating the point
   around the rectangle's midpoint and then checking if it's inside the unrotated
   rectangle. */
-  let [midX, midY, ..._] = rectMidPointDiagAngleHyp(rectX, rectY, rectWidth, rectHeight, rectRot);
+  let [midX, midY, ..._] = rectMidPointDiagAngleRad(rectX, rectY, rectWidth, rectHeight, rectRot);
   let pointDiffX = pointX - midX;
   let pointDiffY = pointY - midY;
   let pointDiffAngle = Math.atan(pointDiffY / pointDiffX);
@@ -155,10 +163,10 @@ function pointIsInRect(rectX, rectY, rectWidth, rectHeight, rectRot, pointX, poi
 // Orig image size 225x315: 2/3 scale
 const cardWidth = 150;
 const cardHeight = 210;
-
+// Card diagonal angle from origin
+const cardDiagAngle = Math.atan(cardHeight / cardWidth);
 // Card diagonal "radius" for use in rotation around center point
-const cardDiag = hypFromSides(cardWidth, cardHeight);
-const cardDiagAngle = Math.atan(cardWidth / cardHeight);
+const cardRadius = hypFromSides(cardWidth / 2, cardHeight / 2);
 
 const tableCenterX = 1024 / 2;
 const tableCenterY = 768 / 2;
@@ -199,7 +207,7 @@ function startUp() {
 }
 
 function rotateCardAroundCenter(card, rotBy) {
-  let [midX, midY, diagAngle, hyp] = rectMidPointDiagAngleHyp(card.x, card.y, cardWidth, cardHeight, card.rot);
+  let [midX, midY, diagAngle, hyp] = rectMidPointDiagAngleRad(card.x, card.y, cardWidth, cardHeight, card.rot);
   card.x = midX - hyp * Math.cos(degToRad(card.rot + rotBy) + diagAngle);
   card.y = midY - hyp * Math.sin(degToRad(card.rot + rotBy) + diagAngle);
   card.rot = card.rot + rotBy;
@@ -219,7 +227,7 @@ function getTopCardAtPoint(x, y) {
 }
 
 function isCardOutsideCircle(card) {
-  let [midX, midY, ..._] = rectMidPointDiagAngleHyp(card.x, card.y, cardWidth, cardHeight, card.rot);
+  let [midX, midY, ..._] = rectMidPointDiagAngleRad(card.x, card.y, cardWidth, cardHeight, card.rot);
   let hyp = hypFromSides(midX - tableCenterX, midY - tableCenterY);
   return Boolean(hyp > outerCircleRadius + (cardWidth / 2));
 }
