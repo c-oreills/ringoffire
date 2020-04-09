@@ -1,5 +1,8 @@
 'use strict';
 
+const canvas = document.getElementById('canvas');
+
+
 // Utilities ---------------------------------------------------------------- //
 
 function throttled(delay, fn) {
@@ -73,43 +76,113 @@ socket.on('server_cards_update', function(updatedCards) {
 });
 
 
-// Mouse/keyboard handling -------------------------------------------------- //
+// Cursor handling (mouse/touch agnostic) ----------------------------------- //
 
-const m = {
+const cursor = {
   x: innerWidth / 2,
   y: innerHeight / 2
 };
 
-function emitMouseMoveAndDraggedCard(m, e) {
-  socket.emit('client_cursor_update', m);
+function emitCursorMoveAndDraggedCard() {
+  socket.emit('client_cursor_update', cursor);
   if (cardBeingDragged !== null) {
     emitCardUpdate(cardBeingDragged);
   }
 }
 
-const throttledEmitMouseMoveAndDraggedCard = throttled(50, emitMouseMoveAndDraggedCard);
+const throttledEmitCursorMoveAndDraggedCard = throttled(50, emitCursorMoveAndDraggedCard);
 
-window.onmousemove = function(e) {
-  m.x = e.offsetX;
-  m.y = e.offsetY;
+function handleCursorMove(dx, dy) {
   if (cardBeingDragged !== null) {
-    moveCard(cardBeingDragged, e.movementX, e.movementY);
+    moveCard(cardBeingDragged, dx, dy);
   }
-  throttledEmitMouseMoveAndDraggedCard(m, e);
-};
+  throttledEmitCursorMoveAndDraggedCard();
+}
 
-window.onmousedown = function(e) {
-  cardBeingDragged = getTopCardAtPoint(m.x, m.y);
-};
+function handleCursorDown() {
+  cardBeingDragged = getTopCardAtPoint(cursor.x, cursor.y);
+}
 
-window.onmouseup = function(e) {
+function handleCursorUp() {
   if (cardBeingDragged != null && isCardOutsideCircle(cardBeingDragged)) {
     turnCardFaceUp(cardBeingDragged);
     emitCardUpdate(cardBeingDragged);
   };
   cardBeingDragged = null;
+}
+
+
+// Mouse handling ----------------------------------------------------------- //
+
+window.onmousemove = function(e) {
+  cursor.x = e.offsetX;
+  cursor.y = e.offsetY;
+  handleCursorMove(e.movementX, e.movementY);
 };
 
+window.onmousedown = function(e) {
+  handleCursorDown();
+};
+
+window.onmouseup = function(e) {
+  handleCursorUp();
+};
+
+
+// Touch handling ----------------------------------------------------------- //
+
+var activeTouch = null;
+
+canvas.addEventListener('touchstart', function(e) {
+  e.preventDefault();
+  for (let touch of e.changedTouches) {
+    if (activeTouch && activeTouch.identifier != touch.identifier)
+      continue;
+
+    cursor.x = touch.pageX;
+    cursor.y = touch.pageY;
+    handleCursorDown();
+
+    activeTouch = touch;
+  }
+});
+
+canvas.addEventListener('touchmove', function(e) {
+  e.preventDefault();
+  for (let touch of e.changedTouches) {
+    if (activeTouch && activeTouch.identifier != touch.identifier)
+      continue;
+
+    let oldTouch = activeTouch;
+    let dx = touch.pageX - oldTouch.pageX;
+    let dy = touch.pageY - oldTouch.pageY;
+    handleCursorMove(dx, dy);
+
+    activeTouch = touch;
+  }
+});
+
+canvas.addEventListener('touchend', function(e) {
+  e.preventDefault();
+  for (let touch of e.changedTouches) {
+    if (activeTouch && activeTouch.identifier != touch.identifier)
+      continue;
+
+    handleCursorUp();
+    activeTouch = null;
+  }
+});
+
+canvas.addEventListener('touchcancel', function(e) {
+  e.preventDefault();
+  for (let touch of e.changedTouches) {
+    if (activeTouch && activeTouch.identifier != touch.identifier)
+      continue;
+
+    handleCursorUp();
+    activeTouch = null;
+  }
+});
 
 // Draw utility functions --------------------------------------------------- //
 
@@ -322,8 +395,6 @@ function drawImg(ctx, img, x, y, width, height, rot) {
   ctx.drawImage(img, 0, 0, width, height);
   ctx.restore();
 };
-
-const canvas = document.getElementById('canvas');
 
 initCardImages();
 

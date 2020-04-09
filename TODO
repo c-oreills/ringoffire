@@ -1,3 +1,2 @@
-* Touch support
 * Refactor card array to map to stop gross lookups?
 * Support rules list
