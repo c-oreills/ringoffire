@@ -75,10 +75,13 @@ def handle_client_card_update(card):
 @socketio.on('client_cards_update')
 def handle_client_cards_update(cards):
     global last_seen_cards
+    # Compact cards array, stripping out any nulls to reset to non-sparse array
+    cards = [c for c in cards if c]
     last_seen_cards = cards
     name = get_name_from_sid(request.sid)
-    for sid in all_other_sids(request.sid):
-        socketio.emit('server_cards_update', cards, room=sid)
+    # Since we're blitzing all state, broadcasts to force a resync on all
+    # clients including one who sent the message
+    socketio.emit('server_cards_update', cards, broadcast=True)
 
 
 if __name__ == '__main__':

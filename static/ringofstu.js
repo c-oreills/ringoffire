@@ -40,9 +40,12 @@ function hypFromSides(side1, side2) {
 const suits = ['C', 'D', 'H', 'S'];
 const faces = ['A', '2', '3', '4', '5', '6', '7', '8', '9', 'T', 'J', 'Q', 'K'];
 const cardState = {faceDown: 'faceDown', faceUp: 'faceUp', offTable: 'offTable'};
-// array of cards - lower index is lower in stack (i.e. top card is last item)
+
+// Array of cards - lower index is lower in stack (i.e. top card is last item).
+// Can be sparse to allow easy placing of cards at the top (see moveCardToTop)
+// so needs checks for undefined values when iterating through
 var cards = [];
-const cursors = {};
+var cursors = {};
 var cardBeingDragged = null;
 
 
@@ -61,19 +64,12 @@ socket.on('server_cursor_update', function(e) {
   cursors[e.name] = e;
 });
 
-socket.on('server_card_update', function(updated_card) {
-  // TODO: It's gross to iterate through cards to check for equality like this.
-  // Could rely on Object insertion order.
-  for (let card of cards) {
-    if (card.suit == updated_card.suit && card.face == updated_card.face) {
-      Object.assign(card, updated_card);
-      break;
-    }
-  };
+socket.on('server_card_update', function(updatedCard) {
+  handleUpdatedCard(updatedCard);
 });
 
-socket.on('server_cards_update', function(updated_cards) {
-  cards = updated_cards;
+socket.on('server_cards_update', function(updatedCards) {
+  cards = updatedCards;
 });
 
 
@@ -108,11 +104,7 @@ window.onmousedown = function(e) {
 
 window.onmouseup = function(e) {
   if (cardBeingDragged != null && isCardOutsideCircle(cardBeingDragged)) {
-    // TODO: Slightly bad UX since flipped cards can end up below other flipped
-    // cards (ideally they'd always be on top) - but we want to keep whole card
-    // resyncs to a minimum to prevent blitzing state from others. Can work
-    // around by clearing flipped cards frequently.
-    cardBeingDragged.state = cardState.faceUp;
+    turnCardFaceUp(cardBeingDragged);
     emitCardUpdate(cardBeingDragged);
   };
   cardBeingDragged = null;
@@ -194,6 +186,8 @@ function initCards() {
 
 function scatterCards() {
   for (let card of cards) {
+    if (typeof card == 'undefined') continue;
+
     let theta = Math.random() * Math.PI * 2;
     card.x = Math.cos(theta) * scatterRadius + (tableCenterX - (cardWidth / 2));
     card.y = Math.sin(theta) * scatterRadius + (tableCenterY - (cardHeight / 2));
@@ -217,6 +211,8 @@ function rotateCardAroundCenter(card, rotBy) {
 function getTopCardAtPoint(x, y) {
   for (let i = cards.length - 1; i >= 0; i--) {
     let card = cards[i];
+    if (typeof card == 'undefined') continue;
+
     if (card.state == cardState.offTable) {
       continue;
     }
@@ -244,8 +240,47 @@ function isCardOutsideCircle(card) {
   return Boolean(hyp > outerCircleRadius + (cardWidth / 2));
 }
 
+function moveCardToTop(card, newCard, index) {
+  /* Move a card to the top of the stack if it's not already there. Optionally
+  replace with newCard. This may lead to array decompaction over time but any
+  syncs back and forth to Pythonland via client_cards_update recompact the
+  array. index can be specified to save a lookup. */
+  newCard = newCard || card;
+  index = index || cards.indexOf(card);
+
+  if (index < cards.length) {
+    delete cards[index];
+    cards[cards.length] = newCard;
+  }
+}
+
+function turnCardFaceUp(card) {
+  card.state = cardState.faceUp;
+  moveCardToTop(card);
+}
+
+function handleUpdatedCard(updatedCard) {
+  // TODO: It's gross to iterate through cards to check for equality like this.
+  // Could rely on Object insertion order.
+  for (let [index, card] of Object.entries(cards)) {
+    if (typeof card == 'undefined') continue;
+
+    if (card.suit == updatedCard.suit && card.face == updatedCard.face) {
+      // If card is being flipped to face up, move to top of stack
+      if (card.state == cardState.faceDown && updatedCard.state == cardState.faceUp) {
+        moveCardToTop(card, updatedCard, index);
+      } else {
+        cards[index] = updatedCard;
+      }
+      break;
+    }
+  };
+}
+
 function clearFaceUpCards() {
   for (let card of cards) {
+    if (typeof card == 'undefined') continue;
+
     if (card.state == cardState.faceUp) {
       card.state = cardState.offTable;
     }
@@ -296,6 +331,8 @@ function draw() {
   ctx.drawImage(background, 0, 0, canvas.width, canvas.height);
 
   for (let card of cards) {
+    if (typeof card == 'undefined') continue;
+
     let img;
     if (card.state == cardState.faceDown) {
       img = cardBack;
