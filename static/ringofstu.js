@@ -1,6 +1,9 @@
+'use strict';
+
 // Utilities ---------------------------------------------------------------- //
 
 function throttled(delay, fn) {
+  // Throttle calls to fn to once per delay ms
   let lastCall = 0;
   return function (...args) {
     const now = (new Date).getTime();
@@ -13,6 +16,7 @@ function throttled(delay, fn) {
 };
 
 function shuffle(a) {
+  // Shuffles an array in place (explicitly don't return it)
   var j, x, i;
   for (i = a.length - 1; i > 0; i--) {
     j = Math.floor(Math.random() * (i + 1));
@@ -20,7 +24,6 @@ function shuffle(a) {
     a[i] = a[j];
     a[j] = x;
   }
-  return a;
 }
 
 function degToRad(degrees) {
@@ -37,6 +40,7 @@ function hypFromSides(side1, side2) {
 const suits = ['C', 'D', 'H', 'S'];
 const faces = ['A', '2', '3', '4', '5', '6', '7', '8', '9', 'T', 'J', 'Q', 'K'];
 const cardState = {faceDown: 'faceDown', faceUp: 'faceUp', offTable: 'offTable'};
+// array of cards - lower index is lower in stack (i.e. top card is last item)
 var cards = [];
 const cursors = {};
 var cardBeingDragged = null;
@@ -58,11 +62,14 @@ socket.on('server_cursor_update', function(e) {
 });
 
 socket.on('server_card_update', function(updated_card) {
-  cards.forEach(function (card) {
+  // TODO: It's gross to iterate through cards to check for equality like this.
+  // Could rely on Object insertion order.
+  for (let card of cards) {
     if (card.suit == updated_card.suit && card.face == updated_card.face) {
       Object.assign(card, updated_card);
+      break;
     }
-  });
+  };
 });
 
 socket.on('server_cards_update', function(updated_cards) {
@@ -76,7 +83,6 @@ const m = {
   x: innerWidth / 2,
   y: innerHeight / 2
 };
-
 
 function emitMouseMoveAndDraggedCard(m, e) {
   socket.emit('client_cursor_update', m);
@@ -103,6 +109,10 @@ window.onmousedown = function(e) {
 
 window.onmouseup = function(e) {
   if (cardBeingDragged != null && isCardOutsideCircle(cardBeingDragged)) {
+    // TODO: Slightly bad UX since flipped cards can end up below other flipped
+    // cards (ideally they'd always be on top) - but we want to keep whole card
+    // resyncs to a minimum to prevent blitzing state from others. Can work
+    // around by clearing flipped cards frequently.
     cardBeingDragged.state = cardState.faceUp;
     emitCardUpdate(cardBeingDragged);
   };
@@ -113,6 +123,8 @@ window.onmouseup = function(e) {
 // Draw utility functions --------------------------------------------------- //
 
 function rectMidPointDiagAngleHyp(x, y, width, height, rot) {
+  // TODO: since we're most likely to call this on cards, we could optimise by
+  // memoizing hyp and diagAngle based on cardWidth and cardHeight
   let hyp = hypFromSides(width / 2, height / 2);
   let diagAngle = Math.atan(height / width);
   let midX = x + Math.cos(degToRad(rot) + diagAngle) * hyp;
@@ -120,31 +132,21 @@ function rectMidPointDiagAngleHyp(x, y, width, height, rot) {
   return [midX, midY, diagAngle, hyp];
 }
 
-function rotateRectAroundCenter(x, y, width, height, rot, rotBy) {
-  // WIP
-  let [midX, midY, diagAngle, hyp] = rectMidPointDiagAngleHyp(x, y, width, height, rot);
-  let newX = midX - hyp * Math.cos(degToRad(rot + rotBy) + diagAngle);
-  let newY = midY - hyp * Math.sin(degToRad(rot + rotBy) + diagAngle);
-  let newRot = rot + rotBy;
-  return [newX, newY, newRot];
-}
-
 function pointIsInRect(rectX, rectY, rectWidth, rectHeight, rectRot, pointX, pointY) {
-  let [midX, midY, diagAngle, hyp] = rectMidPointDiagAngleHyp(rectX, rectY, rectWidth, rectHeight, rectRot);
+  /* Check if a point is in (rotated) rectangle by negatively rotating the point
+  around the rectangle's midpoint and then checking if it's inside the unrotated
+  rectangle. */
+  let [midX, midY, ..._] = rectMidPointDiagAngleHyp(rectX, rectY, rectWidth, rectHeight, rectRot);
   let pointDiffX = pointX - midX;
   let pointDiffY = pointY - midY;
   let pointDiffAngle = Math.atan(pointDiffY / pointDiffX);
   let pointDiffHyp = hypFromSides(pointDiffX, pointDiffY);
   let pointRotatedX = midX + Math.cos(pointDiffAngle - degToRad(rectRot)) * pointDiffHyp;
   let pointRotatedY = midY + Math.sin(pointDiffAngle - degToRad(rectRot)) * pointDiffHyp;
-  if (midX - (rectWidth / 2) < pointRotatedX &&
-      pointRotatedX < midX + (rectWidth / 2) &&
-      midY - (rectHeight / 2) < pointRotatedY &&
-      pointRotatedY < midY + (rectHeight / 2)) {
-    return true;
-  } else {
-    return false;
-  }
+  return Boolean(
+    midX - (rectWidth / 2) < pointRotatedX && pointRotatedX < midX + (rectWidth / 2) &&
+    midY - (rectHeight / 2) < pointRotatedY && pointRotatedY < midY + (rectHeight / 2)
+  );
 }
 
 
@@ -168,31 +170,29 @@ var cardRot = 25;
 
 function initCards() {
   cards.splice(0, cards.length);
-  suits.forEach(
-    suit => faces.forEach(
-      face =>
-        cards.push({
-          suit,
-          face,
-          x: 0,
-          y: 0,
-          rot: 0,
-          state: cardState.faceDown
-        })));
+  for (let suit of suits) {
+    for (let face of faces) {
+      cards.push({
+        suit,
+        face,
+        x: 0,
+        y: 0,
+        rot: 0,
+        state: cardState.faceDown
+      });
+    }
+  }
   shuffle(cards);
-  // cards.length = 1;
 };
 
-
 function scatterCards() {
-  cards.forEach(
-    card => {
-      let theta = Math.random();
-      card.x = Math.cos(theta * Math.PI * 2) * scatterRadius + (tableCenterX - (cardWidth / 2));
-      card.y = Math.sin(theta * Math.PI * 2) * scatterRadius + (tableCenterY - (cardHeight / 2));
-      card.rot = 0; // Reset rotation in prep for rotating around center
-      rotateCardAroundCenter(card, Math.random() * 360);
-    });
+  for (let card of cards) {
+    let theta = Math.random() * Math.PI * 2;
+    card.x = Math.cos(theta) * scatterRadius + (tableCenterX - (cardWidth / 2));
+    card.y = Math.sin(theta) * scatterRadius + (tableCenterY - (cardHeight / 2));
+    card.rot = 0; // Reset rotation in prep for rotating around center
+    rotateCardAroundCenter(card, Math.random() * 360);
+  };
 }
 
 function startUp() {
@@ -201,10 +201,10 @@ function startUp() {
 }
 
 function rotateCardAroundCenter(card, rotBy) {
-  let [x, y, rot] = rotateRectAroundCenter(card.x, card.y, cardWidth, cardHeight, card.rot, rotBy);
-  card.x = x;
-  card.y = y;
-  card.rot = rot;
+  let [midX, midY, diagAngle, hyp] = rectMidPointDiagAngleHyp(card.x, card.y, cardWidth, cardHeight, card.rot);
+  card.x = midX - hyp * Math.cos(degToRad(card.rot + rotBy) + diagAngle);
+  card.y = midY - hyp * Math.sin(degToRad(card.rot + rotBy) + diagAngle);
+  card.rot = card.rot + rotBy;
 }
 
 function getTopCardAtPoint(x, y) {
@@ -221,7 +221,7 @@ function getTopCardAtPoint(x, y) {
 }
 
 function isCardOutsideCircle(card) {
-  let [midX, midY, _a, _h] = rectMidPointDiagAngleHyp(card.x, card.y, cardWidth, cardHeight, card.rot);
+  let [midX, midY, ..._] = rectMidPointDiagAngleHyp(card.x, card.y, cardWidth, cardHeight, card.rot);
   let hyp = hypFromSides(midX - tableCenterX, midY - tableCenterY);
   if (hyp > outerCircleRadius + (cardWidth / 2)) {
     return true;
@@ -231,11 +231,11 @@ function isCardOutsideCircle(card) {
 }
 
 function clearFaceUpCards() {
-  cards.forEach(function(card) {
+  for (let card of cards) {
     if (card.state == cardState.faceUp) {
       card.state = cardState.offTable;
     }
-  });
+  };
 }
 
 function emitCardUpdate(card) {
@@ -255,16 +255,14 @@ cardBack.src = 'static/images/2B.svg';
 const cardImages = {};
 
 function initCardImages() {
-  suits.forEach(
-    suit => {
-      cardImages[suit] = {};
-      faces.forEach(
-        face => {
-          let img = new Image();
-          img.src = `static/images/${face}${suit}.svg`;
-          cardImages[suit][face] = img;
-        });
-    });
+  for (let suit of suits) {
+    cardImages[suit] = {};
+    for (let face of faces) {
+      let img = new Image();
+      img.src = `static/images/${face}${suit}.svg`;
+      cardImages[suit][face] = img;
+    }
+  }
 }
 
 function drawImg(ctx, img, x, y, width, height, rot) {
@@ -283,7 +281,7 @@ function draw() {
   const ctx = canvas.getContext('2d');
   ctx.drawImage(background, 0, 0, canvas.width, canvas.height);
 
-  cards.forEach(function(card) {
+  for (let card of cards) {
     let img;
     if (card.state == cardState.faceDown) {
       img = cardBack;
@@ -294,14 +292,14 @@ function draw() {
     if (card.state != cardState.offTable) {
       drawImg(ctx, img, card.x, card.y, cardWidth, cardHeight, card.rot);
     }
-  });
+  };
 
-  Object.entries(cursors).forEach(([name, cursor]) => {
+  for (let [name, cursor] of Object.entries(cursors)) {
     ctx.beginPath();
     ctx.fillStyle = 'blue';
     ctx.arc(cursor.x, cursor.y, 10, 0, 2 * Math.PI);
     ctx.fill();
-  });
+  };
 
   window.requestAnimationFrame(draw);
 }
