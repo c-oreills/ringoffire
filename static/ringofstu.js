@@ -166,8 +166,6 @@ const innerCircleRadius = 100;
 const outerCircleRadius = 350;
 const scatterRadius = 220;
 
-var cardRot = 25;
-
 function initCards() {
   cards.splice(0, cards.length);
   for (let suit of suits) {
@@ -223,11 +221,7 @@ function getTopCardAtPoint(x, y) {
 function isCardOutsideCircle(card) {
   let [midX, midY, ..._] = rectMidPointDiagAngleHyp(card.x, card.y, cardWidth, cardHeight, card.rot);
   let hyp = hypFromSides(midX - tableCenterX, midY - tableCenterY);
-  if (hyp > outerCircleRadius + (cardWidth / 2)) {
-    return true;
-  } else {
-    return false;
-  }
+  return Boolean(hyp > outerCircleRadius + (cardWidth / 2));
 }
 
 function clearFaceUpCards() {
