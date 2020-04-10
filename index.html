@@ -6,8 +6,8 @@
     <script src="http://cdnjs.cloudflare.com/ajax/libs/socket.io/2.2.0/socket.io.js" integrity="sha256-yr4fRk/GU1ehYJPAs8P4JlTgu0Hdsp4ZKrx8bDEDC3I=" crossorigin="anonymous"></script>
   </head>
   <body style="background: black;">
-    <canvas id="canvas" height=768 width=1024px></canvas>
-    <div id="controls" style="width: 1024px; text-align: center">
+    <canvas id="canvas"></canvas>
+    <div id="controls" style="text-align: center">
       <button onclick="if (window.confirm('Are you sure you want to restart?')) {startUp(); emitCardsUpdate();}">Restart game</button>
       <button onclick="clearFaceUpCards(); emitCardsUpdate();">Clear flipped cards</button>
       <button onclick="scatterCards(); emitCardsUpdate();">Scatter cards</button>

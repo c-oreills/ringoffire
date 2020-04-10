@@ -1,6 +1,7 @@
 'use strict';
 
 const canvas = document.getElementById('canvas');
+const controls = document.getElementById('controls');
 
 
 // Utilities ---------------------------------------------------------------- //
@@ -52,6 +53,83 @@ var cursors = {};
 var cardBeingDragged = null;
 
 
+// Draw constants, coord scaling functions and window resize handler -------- //
+
+var defaultDrawVars = {
+  // Orig image size 225x315: 2/3 scale
+  cardWidth: 150,
+  cardHeight: 210,
+
+  tableWidth: 1024,
+  tableHeight: 768,
+  innerCircleRadius: 100,
+  outerCircleRadius: 350,
+  scatterRadius: 220,
+
+};
+var dv = {}; // drawVars
+
+function scaleCoords(obj) {
+  let newObj = Object.assign({}, obj);
+  newObj.x *= dv.ratio;
+  newObj.y *= dv.ratio;
+  return newObj;
+}
+
+function unscaleCoords(obj) {
+  let newObj = Object.assign({}, obj);
+  newObj.x /= dv.ratio;
+  newObj.y /= dv.ratio;
+  return newObj;
+}
+
+function resizeWindow() {
+  let ddv = defaultDrawVars;
+
+  function applyFnToCardsAndCursors(fn) {
+    for (let card of cards) {
+      Object.assign(card, fn(card));
+    }
+
+    for (let cursor of Object.values(cursors)) {
+      Object.assign(cursor, fn(cursor));
+    }
+  }
+
+  if (typeof dv.ratio != 'undefined') {
+    applyFnToCardsAndCursors(unscaleCoords);
+  }
+
+  let widthRatio = Math.min(window.innerWidth, ddv.tableWidth) / ddv.tableWidth;
+  // pad height so controls can display
+  let paddedTableHeight = ddv.tableHeight + 4 * controls.clientHeight;
+  let heightRatio = Math.min(window.innerHeight, paddedTableHeight) / paddedTableHeight;
+  dv.ratio = Math.min(widthRatio, heightRatio, 1);
+
+  applyFnToCardsAndCursors(scaleCoords);
+
+  for (let [prop, value] of Object.entries(defaultDrawVars)) {
+    dv[prop] = dv.ratio * value;
+  }
+
+  // Card diagonal angle from origin
+  dv.cardDiagAngle = Math.atan(dv.cardHeight / dv.cardWidth),
+  // Card diagonal "radius" for use in rotation around center point
+  dv.cardRadius = hypFromSides(dv.cardWidth / 2, dv.cardHeight / 2),
+
+  dv.tableCenterX = dv.tableWidth / 2,
+  dv.tableCenterY = dv.tableHeight / 2,
+
+  canvas.width = dv.tableWidth;
+  canvas.height = dv.tableHeight;
+  controls.style.width = dv.tableWidth + 'px';
+}
+
+resizeWindow();
+
+window.onresize = resizeWindow;
+
+
 // Socket handling ---------------------------------------------------------- //
 
 var socket = io();
@@ -63,8 +141,8 @@ socket.on('deregister', function(name) {
   delete cursors[name];
 });
 
-socket.on('server_cursor_update', function(e) {
-  cursors[e.name] = e;
+socket.on('server_cursor_update', function(cursor) {
+  cursors[cursor.name] = scaleCoords(cursor);
 });
 
 socket.on('server_card_update', function(updatedCard) {
@@ -72,19 +150,19 @@ socket.on('server_card_update', function(updatedCard) {
 });
 
 socket.on('server_cards_update', function(updatedCards) {
-  cards = updatedCards;
+  cards = updatedCards.map(scaleCoords);
 });
 
 
 // Cursor handling (mouse/touch agnostic) ----------------------------------- //
 
 const cursor = {
-  x: innerWidth / 2,
-  y: innerHeight / 2
+  x: 0,
+  y: 0
 };
 
 function emitCursorMoveAndDraggedCard() {
-  socket.emit('client_cursor_update', cursor);
+  socket.emit('client_cursor_update', unscaleCoords(cursor));
   if (cardBeingDragged !== null) {
     emitCardUpdate(cardBeingDragged);
   }
@@ -184,16 +262,17 @@ canvas.addEventListener('touchcancel', function(e) {
   }
 });
 
-// Draw utility functions --------------------------------------------------- //
+
+// Draw functions ----------------------------------------------------------- //
 
 function rectMidPointDiagAngleRad(x, y, width, height, rot) {
   /* Return rectangle's midpoint (x, y), diagonal angle from origin (not taking
   into account rotation), and "radius", i.e. length from midpoint to corner */
   let diagAngle, radius;
-  if (width == cardWidth && height == cardHeight) {
+  if (width == dv.cardWidth && height == dv.cardHeight) {
     // Optimization: use precomputed values
-    diagAngle = cardDiagAngle;
-    radius = cardRadius;
+    diagAngle = dv.cardDiagAngle;
+    radius = dv.cardRadius;
   } else {
     diagAngle = Math.atan(height / width);
     radius = hypFromSides(width / 2, height / 2);
@@ -224,22 +303,6 @@ function pointIsInRect(rectX, rectY, rectWidth, rectHeight, rectRot, pointX, poi
 
 // Card handling ------------------------------------------------------------ //
 
-// Orig image size 225x315: 2/3 scale
-const cardWidth = 150;
-const cardHeight = 210;
-// Card diagonal angle from origin
-const cardDiagAngle = Math.atan(cardHeight / cardWidth);
-// Card diagonal "radius" for use in rotation around center point
-const cardRadius = hypFromSides(cardWidth / 2, cardHeight / 2);
-
-const tableWidth = 1024;
-const tableHeight = 768;
-const tableCenterX = tableWidth / 2;
-const tableCenterY = tableHeight / 2;
-const innerCircleRadius = 100;
-const outerCircleRadius = 350;
-const scatterRadius = 220;
-
 function initCards() {
   cards.splice(0, cards.length);
   for (let suit of suits) {
@@ -262,8 +325,8 @@ function scatterCards() {
     if (typeof card == 'undefined') continue;
 
     let theta = Math.random() * Math.PI * 2;
-    card.x = Math.cos(theta) * scatterRadius + (tableCenterX - (cardWidth / 2));
-    card.y = Math.sin(theta) * scatterRadius + (tableCenterY - (cardHeight / 2));
+    card.x = Math.cos(theta) * dv.scatterRadius + (dv.tableCenterX - (dv.cardWidth / 2));
+    card.y = Math.sin(theta) * dv.scatterRadius + (dv.tableCenterY - (dv.cardHeight / 2));
     card.rot = 0; // Reset rotation in prep for rotating around center
     rotateCardAroundCenter(card, Math.random() * 360);
   };
@@ -275,7 +338,7 @@ function startUp() {
 }
 
 function rotateCardAroundCenter(card, rotBy) {
-  let [midX, midY, diagAngle, hyp] = rectMidPointDiagAngleRad(card.x, card.y, cardWidth, cardHeight, card.rot);
+  let [midX, midY, diagAngle, hyp] = rectMidPointDiagAngleRad(card.x, card.y, dv.cardWidth, dv.cardHeight, card.rot);
   card.x = midX - hyp * Math.cos(degToRad(card.rot + rotBy) + diagAngle);
   card.y = midY - hyp * Math.sin(degToRad(card.rot + rotBy) + diagAngle);
   card.rot = card.rot + rotBy;
@@ -289,7 +352,7 @@ function getTopCardAtPoint(x, y) {
     if (card.state == cardState.offTable) {
       continue;
     }
-    if (pointIsInRect(card.x, card.y, cardWidth, cardHeight, card.rot, x, y)) {
+    if (pointIsInRect(card.x, card.y, dv.cardWidth, dv.cardHeight, card.rot, x, y)) {
       return card;
     }
   }
@@ -299,18 +362,18 @@ function getTopCardAtPoint(x, y) {
 function moveCard(card, dx, dy) {
   card.x += dx;
   card.y += dy;
-  let [midX, midY, ..._] = rectMidPointDiagAngleRad(card.x, card.y, cardWidth, cardHeight, card.rot);
+  let [midX, midY, ..._] = rectMidPointDiagAngleRad(card.x, card.y, dv.cardWidth, dv.cardHeight, card.rot);
   // Limit to table boundaries
   if (midX < 0) card.x -= midX;
   if (midY < 0) card.y -= midY;
-  if (midX > tableWidth) card.x -= (midX - tableWidth);
-  if (midY > tableHeight) card.y -= (midY - tableHeight);
+  if (midX > dv.tableWidth) card.x -= (midX - dv.tableWidth);
+  if (midY > dv.tableHeight) card.y -= (midY - dv.tableHeight);
 }
 
 function isCardOutsideCircle(card) {
-  let [midX, midY, ..._] = rectMidPointDiagAngleRad(card.x, card.y, cardWidth, cardHeight, card.rot);
-  let hyp = hypFromSides(midX - tableCenterX, midY - tableCenterY);
-  return Boolean(hyp > outerCircleRadius + (cardWidth / 2));
+  let [midX, midY, ..._] = rectMidPointDiagAngleRad(card.x, card.y, dv.cardWidth, dv.cardHeight, card.rot);
+  let hyp = hypFromSides(midX - dv.tableCenterX, midY - dv.tableCenterY);
+  return Boolean(hyp > dv.outerCircleRadius + (dv.cardWidth / 2));
 }
 
 function moveCardToTop(card, newCard, index) {
@@ -333,6 +396,7 @@ function turnCardFaceUp(card) {
 }
 
 function handleUpdatedCard(updatedCard) {
+  updatedCard = scaleCoords(updatedCard);
   // TODO: It's gross to iterate through cards to check for equality like this.
   // Could rely on Object insertion order. In reality though an acceptable
   // performance hit given likely size of array, even as it grows sparse.
@@ -362,11 +426,13 @@ function clearFaceUpCards() {
 }
 
 function emitCardUpdate(card) {
-  socket.emit('client_card_update', card);
+  socket.emit('client_card_update', unscaleCoords(card));
 }
 
 function emitCardsUpdate() {
-  socket.emit('client_cards_update', cards);
+  // Ideally this function should be used as little as possible, as it blitzes
+  // state that others may have updated. Prefer emitCardUpdate where possible.
+  socket.emit('client_cards_update', cards.map(unscaleCoords));
 }
 
 // Draw logic --------------------------------------------------------------- //
@@ -400,7 +466,7 @@ initCardImages();
 
 function draw() {
   const ctx = canvas.getContext('2d');
-  ctx.drawImage(background, 0, 0, canvas.width, canvas.height);
+  ctx.drawImage(background, 0, 0, dv.tableWidth, dv.tableHeight);
 
   for (let card of cards) {
     if (typeof card == 'undefined') continue;
@@ -413,7 +479,7 @@ function draw() {
     }
 
     if (card.state != cardState.offTable) {
-      drawImg(ctx, img, card.x, card.y, cardWidth, cardHeight, card.rot);
+      drawImg(ctx, img, card.x, card.y, dv.cardWidth, dv.cardHeight, card.rot);
     }
   };
 
