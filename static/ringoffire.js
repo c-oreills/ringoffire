@@ -197,9 +197,11 @@ function handleCursorUp() {
 // Mouse handling ----------------------------------------------------------- //
 
 window.onmousemove = function(e) {
-  cursor.x = e.offsetX;
-  cursor.y = e.offsetY;
-  handleCursorMove(e.movementX, e.movementY);
+  let movementX = e.pageX - canvas.offsetLeft - cursor.x;
+  let movementY = e.pageY - canvas.offsetTop - cursor.y;
+  cursor.x = e.pageX - canvas.offsetLeft;
+  cursor.y = e.pageY - canvas.offsetTop;
+  handleCursorMove(movementX, movementY);
 };
 
 window.onmousedown = function(e) {
