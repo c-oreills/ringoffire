@@ -155,6 +155,7 @@ socket.on('server_card_update', function(updatedCard) {
 
 socket.on('server_cards_update', function(updatedCards) {
   cards = updatedCards.map(scaleCoords);
+  initCardImages();
 });
 
 
@@ -359,6 +360,8 @@ function getTopCardAtPoint(x, y) {
       continue;
     }
     if (pointIsInRect(card.x, card.y, dv.cardWidth, dv.cardHeight, card.rot, x, y)) {
+      // Prepopulate image cache
+      getCardImage(card.suit, card.face);
       return card;
     }
   }
@@ -403,6 +406,8 @@ function turnCardFaceUp(card) {
 
 function handleUpdatedCard(updatedCard) {
   updatedCard = scaleCoords(updatedCard);
+  // Prepopulate image cache
+  getCardImage(updatedCard.suit, updatedCard.face);
   // TODO: It's gross to iterate through cards to check for equality like this.
   // Could rely on Object insertion order. In reality though an acceptable
   // performance hit given likely size of array, even as it grows sparse.
@@ -448,15 +453,29 @@ background.src = 'static/images/background.jpg';
 const cardBack = new Image();
 cardBack.src = 'static/images/2B.svg';
 const cardImages = {};
+for (let suit of suits) {
+  cardImages[suit] = {};
+}
+
+function getCardImage(suit, face) {
+  let img = cardImages[suit][face];
+  if (typeof img != 'undefined')
+    return img;
+
+  img = new Image();
+  img.src = `static/images/${face}${suit}.svg`;
+  cardImages[suit][face] = img;
+  return img;
+}
 
 function initCardImages() {
-  for (let suit of suits) {
-    cardImages[suit] = {};
-    for (let face of faces) {
-      let img = new Image();
-      img.src = `static/images/${face}${suit}.svg`;
-      cardImages[suit][face] = img;
-    }
+  for (let card of cards) {
+    if (typeof card == 'undefined')
+      continue;
+    if (card.state != cardState.faceUp)
+      continue;
+    // Prepopulate cache
+    getCardImage(card.suit, card.face);
   }
 }
 
@@ -467,8 +486,6 @@ function drawImg(ctx, img, x, y, width, height, rot) {
   ctx.drawImage(img, 0, 0, width, height);
   ctx.restore();
 };
-
-initCardImages();
 
 function draw() {
   const ctx = canvas.getContext('2d');
@@ -481,7 +498,7 @@ function draw() {
     if (card.state == cardState.faceDown) {
       img = cardBack;
     } else if (card.state == cardState.faceUp) {
-      img = cardImages[card.suit][card.face];
+      img = getCardImage(card.suit, card.face);
     }
 
     if (card.state != cardState.offTable) {
@@ -499,4 +516,5 @@ function draw() {
   window.requestAnimationFrame(draw);
 }
 
+initCardImages();
 window.requestAnimationFrame(draw);
