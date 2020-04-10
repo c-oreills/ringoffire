@@ -10,6 +10,6 @@ The design philosophy follows that of [Desperate Gods](https://www.wolfire.com/d
 
 Most logic takes place on the client, and no frontend libraries are used save for Socket.io. Rendering is in canvas, with hand-rolled hit detection. The backend is a (mostly) dumb message bus server.
 
-Tested on Chrome, Firefox, and Webkit (Safari). Supports mobile devices.
+Tested on Chrome, Firefox, Webkit (Safari) and Edge. Supports mobile devices.
 
 ![Zoom call](readme_imgs/zoom_photo.jpg?raw=true)
