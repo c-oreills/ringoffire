@@ -88,6 +88,9 @@ function resizeWindow() {
 
   function applyFnToCardsAndCursors(fn) {
     for (let card of cards) {
+      if (typeof card == 'undefined')
+        continue;
+
       Object.assign(card, fn(card));
     }
 
@@ -128,6 +131,7 @@ function resizeWindow() {
 resizeWindow();
 
 window.onresize = resizeWindow;
+window.onorientationchange = resizeWindow;
 
 
 // Socket handling ---------------------------------------------------------- //
@@ -217,8 +221,8 @@ canvas.addEventListener('touchstart', function(e) {
     if (activeTouch && activeTouch.identifier != touch.identifier)
       continue;
 
-    cursor.x = touch.pageX;
-    cursor.y = touch.pageY;
+    cursor.x = touch.pageX - canvas.offsetLeft;
+    cursor.y = touch.pageY - canvas.offsetTop;
     handleCursorDown();
 
     activeTouch = touch;
