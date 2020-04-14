@@ -1,7 +1,12 @@
+from time import time
+
 from urllib.parse import parse_qs
 
-from flask import Flask, Response, render_template, request
+from flask import Flask, render_template, request
 from flask_socketio import SocketIO
+
+# Used as a cache busting mechanism
+app_start_time = time()
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'secret!'
@@ -26,7 +31,7 @@ def all_other_sids(sid):
 
 @app.route('/')
 def index():
-    return Response(open('index.html').read(), mimetype='text/html')
+    return render_template('index.html', st=app_start_time)
 
 
 @socketio.on('disconnect')
