@@ -1,7 +1,6 @@
 'use strict';
 
-const canvas = document.getElementById('canvas');
-const controls = document.getElementById('controls');
+var canvas, controls;
 
 
 // Utilities ---------------------------------------------------------------- //
@@ -128,35 +127,31 @@ function resizeWindow() {
   controls.style.width = dv.tableWidth + 'px';
 }
 
-resizeWindow();
-
-window.onresize = resizeWindow;
-window.onorientationchange = resizeWindow;
-
 
 // Socket handling ---------------------------------------------------------- //
 
-var socket = io();
-socket.on('connect', function() {
+var socket;
+
+function socket_connect() {
   socket.emit('register', window.location.search);
-});
+}
 
-socket.on('deregister', function(name) {
+function socket_deregister(name) {
   delete cursors[name];
-});
+}
 
-socket.on('server_cursor_update', function(cursor) {
+function socket_server_cursor_update(cursor) {
   cursors[cursor.name] = scaleCoords(cursor);
-});
+}
 
-socket.on('server_card_update', function(updatedCard) {
+function socket_server_card_update(updatedCard) {
   handleUpdatedCard(updatedCard);
-});
+}
 
-socket.on('server_cards_update', function(updatedCards) {
+function socket_server_cards_update(updatedCards) {
   cards = updatedCards.map(scaleCoords);
   initCardImages();
-});
+}
 
 
 // Cursor handling (mouse/touch agnostic) ----------------------------------- //
@@ -197,7 +192,7 @@ function handleCursorUp() {
 
 // Mouse handling ----------------------------------------------------------- //
 
-window.onmousemove = function(e) {
+function mousemove(e) {
   let movementX = e.pageX - canvas.offsetLeft - cursor.x;
   let movementY = e.pageY - canvas.offsetTop - cursor.y;
   cursor.x = e.pageX - canvas.offsetLeft;
@@ -205,20 +200,12 @@ window.onmousemove = function(e) {
   handleCursorMove(movementX, movementY);
 };
 
-window.onmousedown = function(e) {
-  handleCursorDown();
-};
-
-window.onmouseup = function(e) {
-  handleCursorUp();
-};
-
 
 // Touch handling ----------------------------------------------------------- //
 
 var activeTouch = null;
 
-canvas.addEventListener('touchstart', function(e) {
+function touchstart(e) {
   e.preventDefault();
   for (let touch of e.changedTouches) {
     if (activeTouch && activeTouch.identifier != touch.identifier)
@@ -230,9 +217,9 @@ canvas.addEventListener('touchstart', function(e) {
 
     activeTouch = touch;
   }
-});
+}
 
-canvas.addEventListener('touchmove', function(e) {
+function touchmove(e) {
   e.preventDefault();
   for (let touch of e.changedTouches) {
     if (activeTouch && activeTouch.identifier != touch.identifier)
@@ -245,9 +232,9 @@ canvas.addEventListener('touchmove', function(e) {
 
     activeTouch = touch;
   }
-});
+}
 
-canvas.addEventListener('touchend', function(e) {
+function touchendcancel(e) {
   e.preventDefault();
   for (let touch of e.changedTouches) {
     if (activeTouch && activeTouch.identifier != touch.identifier)
@@ -256,18 +243,7 @@ canvas.addEventListener('touchend', function(e) {
     handleCursorUp();
     activeTouch = null;
   }
-});
-
-canvas.addEventListener('touchcancel', function(e) {
-  e.preventDefault();
-  for (let touch of e.changedTouches) {
-    if (activeTouch && activeTouch.identifier != touch.identifier)
-      continue;
-
-    handleCursorUp();
-    activeTouch = null;
-  }
-});
+}
 
 
 // Draw functions ----------------------------------------------------------- //
@@ -516,5 +492,32 @@ function draw() {
   window.requestAnimationFrame(draw);
 }
 
-initCardImages();
-window.requestAnimationFrame(draw);
+window.onload = () => {
+  Sentry.init({ dsn: 'https://2e12360289c74c4da324b888b72e490c@o112365.ingest.sentry.io/5200097' });
+
+  canvas = document.getElementById('canvas');
+  controls = document.getElementById('controls');
+
+  window.onresize = resizeWindow;
+  window.onorientationchange = resizeWindow;
+  resizeWindow();
+
+  socket = io();
+  socket.on('connect', socket_connect);
+  socket.on('deregister', socket_deregister);
+  socket.on('server_cursor_update', socket_server_cursor_update);
+  socket.on('server_card_update', socket_server_card_update);
+  socket.on('server_cards_update', socket_server_cards_update);
+
+  window.onmousemove = mousemove;
+  window.onmousedown = handleCursorDown;
+  window.onmouseup = handleCursorUp;
+
+  canvas.addEventListener('touchstart', touchstart);
+  canvas.addEventListener('touchmove', touchmove);
+  canvas.addEventListener('touchend', touchendcancel);
+  canvas.addEventListener('touchcancel', touchendcancel);
+
+  initCardImages();
+  window.requestAnimationFrame(draw);
+};
