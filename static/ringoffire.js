@@ -115,12 +115,12 @@ function resizeWindow() {
   }
 
   // Card diagonal angle from origin
-  dv.cardDiagAngle = Math.atan(dv.cardHeight / dv.cardWidth),
+  dv.cardDiagAngle = Math.atan(dv.cardHeight / dv.cardWidth);
   // Card diagonal "radius" for use in rotation around center point
-  dv.cardRadius = hypFromSides(dv.cardWidth / 2, dv.cardHeight / 2),
+  dv.cardRadius = hypFromSides(dv.cardWidth / 2, dv.cardHeight / 2);
 
-  dv.tableCenterX = dv.tableWidth / 2,
-  dv.tableCenterY = dv.tableHeight / 2,
+  dv.tableCenterX = dv.tableWidth / 2;
+  dv.tableCenterY = dv.tableHeight / 2;
 
   canvas.width = dv.tableWidth;
   canvas.height = dv.tableHeight;
