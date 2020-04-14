@@ -41,7 +41,7 @@ function hypFromSides(side1, side2) {
 // Base data setup ---------------------------------------------------------- //
 
 const suits = ['C', 'D', 'H', 'S'];
-const faces = ['A', '2', '3', '4', '5', '6', '7', '8', '9', 'T', 'J', 'Q', 'K'];
+const faces = ['1', '2', '3', '4', '5', '6', '7', '8', '9', 'T', 'J', 'Q', 'K'];
 const cardState = {faceDown: 'faceDown', faceUp: 'faceUp', offTable: 'offTable'};
 
 // Array of cards - lower index is lower in stack (i.e. top card is last item).
